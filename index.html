@@ -8,6 +8,10 @@
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
         button { padding: 10px 20px; font-size: 16px; }
+        table { margin: 20px auto; border-collapse: collapse; width: 80%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        #walletList { display: none; }
     </style>
 </head>
 <body>
@@ -15,6 +19,21 @@
     <button onclick="connectWallet()">Connect Wallet</button>
     <button onclick="mintNFT()" id="mintButton" disabled>Mint NFT</button>
     <p id="status">Status: Not connected</p>
+
+    <h3>Top 1-100 Wallets Buying NFTs</h3>
+    <button onclick="fetchTopWallets()">Fetch Top Wallets</button>
+    <div id="walletList">
+        <table id="walletTable">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Wallet Address</th>
+                    <th>Number of NFTs Minted</th>
+                </tr>
+            </thead>
+            <tbody id="walletTableBody"></tbody>
+        </table>
+    </div>
 
     <script>
         let web3;
@@ -28,10 +47,21 @@
                 "payable": true,
                 "stateMutability": "payable",
                 "type": "function"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    { "indexed": true, "name": "from", "type": "address" },
+                    { "indexed": true, "name": "to", "type": "address" },
+                    { "indexed": true, "name": "tokenId", "type": "uint256" }
+                ],
+                "name": "Transfer",
+                "type": "event"
             }
         ];
-        const MINT_FEE = "1000000000000000000"; // 1 MON dalam wei (sesuaikan jika biaya mint berbeda)
+        const MINT_FEE = "1000000000000000000"; // 1 MON in wei
         const MONAD_TESTNET_CHAIN_ID = 10143; // Chain ID Monad Testnet (0x279f)
+        const MONAD_TESTNET_RPC = "https://testnet.monad.xyz/rpc"; // Replace with actual RPC if different
 
         async function checkNetwork() {
             try {
@@ -63,7 +93,8 @@
                     console.error(error);
                 }
             } else {
-                document.getElementById("status").innerText = "Status: Please install MetaMask!";
+                web3 = new Web3(MONAD_TESTNET_RPC); // Fallback to public RPC for read-only operations
+                document.getElementById("status").innerText = "Status: Please install MetaMask for wallet connection. Using public RPC for data fetching.";
             }
         }
 
@@ -83,12 +114,63 @@
                 await contract.methods.mint().send({
                     from: accounts[0],
                     value: MINT_FEE,
-                    gas: Math.floor(gasEstimate * 1.2) // Buffer 20% untuk gas
+                    gas: Math.floor(gasEstimate * 1.2)
                 });
                 document.getElementById("status").innerText = "Status: NFT minted successfully!";
             } catch (error) {
                 console.error(error);
                 document.getElementById("status").innerText = `Status: Error minting NFT: ${error.message}`;
+            }
+        }
+
+        async function fetchTopWallets() {
+            try {
+                document.getElementById("status").innerText = "Status: Fetching wallet data...";
+                if (!web3) {
+                    web3 = new Web3(MONAD_TESTNET_RPC);
+                }
+
+                const contract = new web3.eth.Contract(contractABI, contractAddress);
+                const latestBlock = await web3.eth.getBlockNumber();
+                const fromBlock = 0; // Start from genesis block; adjust for performance
+
+                // Fetch Transfer events where 'from' is zero address (indicating minting)
+                const events = await contract.getPastEvents("Transfer", {
+                    filter: { from: "0x0000000000000000000000000000000000000000" },
+                    fromBlock: fromBlock,
+                    toBlock: latestBlock
+                });
+
+                // Aggregate mints by wallet
+                const walletMints = {};
+                events.forEach(event => {
+                    const toAddress = event.returnValues.to;
+                    walletMints[toAddress] = (walletMints[toAddress] || 0) + 1;
+                });
+
+                // Sort wallets by number of mints
+                const sortedWallets = Object.entries(walletMints)
+                    .sort(([, a], [, b]) => b - a)
+                    .slice(0, 100); // Top 1-100
+
+                // Update table
+                const tableBody = document.getElementById("walletTableBody");
+                tableBody.innerHTML = "";
+                sortedWallets.forEach(([address, count], index) => {
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${address}</td>
+                        <td>${count}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+
+                document.getElementById("walletList").style.display = "block";
+                document.getElementById("status").innerText = "Status: Top wallets loaded successfully!";
+            } catch (error) {
+                console.error(error);
+                document.getElementById("status").innerText = `Status: Error fetching wallet data: ${error.message}`;
             }
         }
     </script>
