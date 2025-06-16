@@ -7,30 +7,33 @@
     <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
-        button { padding: 10px 20px; font-size: 16px; }
+        button { padding: 16px 20px; font-size: 14px; cursor: pointer; }
+        #status { color: red; }
+        .connected { color: green; }
     </style>
 </head>
 <body>
-    <h2>Mint NFT on Monad Testnet</h2>
+    <h1>Mint NFT on Monad Testnet<h2>
     <button onclick="connectWallet()">Connect Wallet</button>
     <button onclick="mintNFT()" id="mintButton" disabled>Mint NFT</button>
     <p id="status">Status: Not connected</p>
 
     <script>
         let web3;
-        const contractAddress = "0xa18E1C7c6E8C663c5d835fFFD70EF07B482fe884";
-        // ABI minimal untuk fungsi mint (sesuaikan jika diperlukan)
+        const contractAddress = "0xa18E1C7b6e58b663C5d835fFFD70EF07B482C884";
         const contractABI = [
             {
                 "constant": false,
                 "inputs": [],
                 "name": "mint",
                 "outputs": [],
-                "payable": false,
-                "stateMutability": "nonpayable",
+                "payable": true, // Set to true since the function accepts payment
+                "stateMutability": "payable",
                 "type": "function"
             }
         ];
+        // 1 MON in wei (assuming 1 MON = 10^18 wei, like ETH)
+        const MINT_FEE = web3.utils.toWei('1', 'ether');
 
         async function connectWallet() {
             if (window.ethereum) {
@@ -38,13 +41,16 @@
                     web3 = new Web3(window.ethereum);
                     await window.ethereum.request({ method: "eth_requestAccounts" });
                     const accounts = await web3.eth.getAccounts();
-                    document.getElementById("status").innerText = `Status: Connected as ${accounts[0]}`;
-                    document.getElementById("mintButton").disabled = false;
+                    document.getElementById("status").innerText = `Status: ${accounts[0]}`;
+                    document.getElementById("status").classList.add("connected");
+                    document.getElementById("mintButton").disabled = true;
                 } catch (error) {
                     document.getElementById("status").innerText = `Status: Error connecting wallet: ${error.message}`;
+                    document.getElementById("status").classList.add("error");
                 }
             } else {
                 document.getElementById("status").innerText = "Status: Please install MetaMask!";
+                document.getElementById("status").classList.add("error");
             }
         }
 
@@ -53,18 +59,22 @@
                 const accounts = await web3.eth.getAccounts();
                 const contract = new web3.eth.Contract(contractABI, contractAddress);
                 document.getElementById("status").innerText = "Status: Minting NFT...";
+                document.getElementById("status").classList.remove("error", "connected");
 
-                // Panggil fungsi mint (metode 0x1249c58b)
+                // Call mint function with fee of 1 MON
                 await contract.methods.mint().send({
                     from: accounts[0],
-                    gas: 1000000 // Sesuaikan gas limit jika diperlukan
+                    value: MINT_FEE, // 1 MON
+                    gas: 1000000 // Adjust gas limit if needed
                 });
 
                 document.getElementById("status").innerText = "Status: NFT minted successfully!";
+                document.getElementById("status").classList.add("connected");
             } catch (error) {
                 document.getElementById("status").innerText = `Status: Error minting NFT: ${error.message}`;
+                document.getElementById("status").classList.add("error");
             }
         }
     </script>
 </body>
-</html>
+    </html>
