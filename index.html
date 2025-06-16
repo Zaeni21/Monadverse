@@ -26,7 +26,7 @@
                 "inputs": [],
                 "name": "mint",
                 "outputs": [],
-                "payable":false,
+                "payable": false,
                 "stateMutability": "nonpayable",
                 "type": "function"
             }
@@ -54,13 +54,12 @@
                 const contract = new web3.eth.Contract(contractABI, contractAddress);
                 document.getElementById("status").innerText = "Status: Minting NFT...";
 
-                // Call mint function with fee of 1 MON
-‎                const gasEstimate = await contract.methods.mint().estimateGas({ from: accounts[0], value: MINT_FEE });
-await contract.methods.mint().send({
-    from: accounts[0],
-    value: MINT_FEE,
-    gas: Math.floor(gasEstimate * 1.2) // Tambah 20% buffer
-});
+                // Panggil fungsi mint (metode 0x1249c58b)
+                await contract.methods.mint().send({
+                    from: accounts[0],
+                    gas: 1000000 // Sesuaikan gas limit jika diperlukan
+                });
+
                 document.getElementById("status").innerText = "Status: NFT minted successfully!";
             } catch (error) {
                 document.getElementById("status").innerText = `Status: Error minting NFT: ${error.message}`;
