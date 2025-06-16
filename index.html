@@ -55,11 +55,12 @@
                 document.getElementById("status").innerText = "Status: Minting NFT...";
 
                 // Call mint function with fee of 1 MON
-‎                await contract.methods.mint().send({
-‎                    from: accounts[0],
-‎                    value: MINT_FEE, // 1 MON
-‎                    gas: 1000000 // Adjust gas limit if needed
-‎                });
+‎                const gasEstimate = await contract.methods.mint().estimateGas({ from: accounts[0], value: MINT_FEE });
+await contract.methods.mint().send({
+    from: accounts[0],
+    value: MINT_FEE,
+    gas: Math.floor(gasEstimate * 1.2) // Tambah 20% buffer
+});
                 document.getElementById("status").innerText = "Status: NFT minted successfully!";
             } catch (error) {
                 document.getElementById("status").innerText = `Status: Error minting NFT: ${error.message}`;
